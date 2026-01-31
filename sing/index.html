@@ -1,222 +1,314 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RotateCcw, Music, Mic2, Trophy, ChevronRight } from 'lucide-react';
-
-const ARIRANG_LYRICS = [
-  { start: 0, end: 4, text: "아리랑 아리랑 아라리요", sub: "Arirang, Arirang, Arariyo" },
-  { start: 4, end: 8, text: "아리랑 고개로 넘어간다", sub: "Crossing over the Arirang Pass" },
-  { start: 8, end: 12, text: "나를 버리고 가시는 님은", sub: "Dear one who leaves me behind" },
-  { start: 12, end: 16, text: "십리도 못가서 발병난다", sub: "Will have sore feet before going ten li" },
-  { start: 16, end: 20, text: "아리랑 아리랑 아라리요", sub: "Arirang, Arirang, Arariyo" },
-  { start: 20, end: 24, text: "아리랑 고개로 넘어간다", sub: "Crossing over the Arirang Pass" }
-];
-
-const App = () => {
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [score, setScore] = useState(0);
-  const [showScore, setShowScore] = useState(false);
-  const timerRef = useRef(null);
-  const totalDuration = ARIRANG_LYRICS[ARIRANG_LYRICS.length - 1].end;
-
-  useEffect(() => {
-    if (isPlaying) {
-      timerRef.current = setInterval(() => {
-        setCurrentTime((prev) => {
-          if (prev >= totalDuration) {
-            handleStop();
-            setShowScore(true);
-            setScore(Math.floor(Math.random() * 21) + 80); // 80~100 points
-            return totalDuration;
-          }
-          return prev + 0.1;
-        });
-      }, 100);
-    } else {
-      clearInterval(timerRef.current);
-    }
-    return () => clearInterval(timerRef.current);
-  }, [isPlaying, totalDuration]);
-
-  const handleTogglePlay = () => {
-    if (showScore) {
-      handleReset();
-    } else {
-      setIsPlaying(!isPlaying);
-    }
-  };
-
-  const handleStop = () => {
-    setIsPlaying(false);
-  };
-
-  const handleReset = () => {
-    setIsPlaying(false);
-    setCurrentTime(0);
-    setShowScore(false);
-    setScore(0);
-  };
-
-  const currentLyricIndex = ARIRANG_LYRICS.findIndex(
-    (l) => currentTime >= l.start && currentTime < l.end
-  );
-  
-  const currentLyric = currentLyricIndex !== -1 ? ARIRANG_LYRICS[currentLyricIndex] : null;
-  const nextLyric = currentLyricIndex !== -1 && currentLyricIndex < ARIRANG_LYRICS.length - 1 
-    ? ARIRANG_LYRICS[currentLyricIndex + 1] 
-    : null;
-
-  // Calculate percentage of current line completed for highlighting
-  const getHighlightWidth = () => {
-    if (!currentLyric) return 0;
-    const duration = currentLyric.end - currentLyric.start;
-    const elapsed = currentTime - currentLyric.start;
-    return Math.min((elapsed / duration) * 100, 100);
-  };
-
-  return (
-    <div className="min-h-screen bg-slate-950 text-white font-sans flex flex-col items-center justify-center p-4">
-      {/* Karaoke Screen Container */}
-      <div className="w-full max-w-4xl bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border-4 border-indigo-500/30 relative">
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arirang Karaoke</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         
-        {/* Header/Status Bar */}
-        <div className="bg-slate-800/80 p-4 flex justify-between items-center border-b border-indigo-500/20">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center animate-pulse">
-              <Music size={20} />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-indigo-400">아리랑 (Arirang)</h1>
-              <p className="text-xs text-slate-400">Traditional Korean Folk Song</p>
-            </div>
-          </div>
-          <div className="text-right">
-            <div className="text-2xl font-mono font-bold text-yellow-400">
-              {Math.floor(currentTime / 60)}:{(currentTime % 60).toFixed(0).padStart(2, '0')}
-            </div>
-            <div className="text-[10px] uppercase tracking-widest text-slate-500">Duration</div>
-          </div>
-        </div>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
 
-        {/* Lyrics Area */}
-        <div className="h-80 flex flex-col items-center justify-center p-8 relative overflow-hidden bg-gradient-to-b from-slate-900 to-indigo-950/20">
-          {/* Background Decorative Elements */}
-          <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
-            <div className="absolute top-10 left-10 w-32 h-32 bg-indigo-500 rounded-full blur-3xl"></div>
-            <div className="absolute bottom-10 right-10 w-40 h-40 bg-purple-500 rounded-full blur-3xl"></div>
-          </div>
+        .lyric-highlight-container {
+            position: relative;
+            display: inline-block;
+        }
 
-          {!showScore ? (
-            <div className="text-center z-10 transition-all duration-300">
-              {currentLyric ? (
-                <>
-                  {/* Current Main Lyric with Highlight Effect */}
-                  <div className="relative inline-block mb-4">
-                    <span className="text-5xl md:text-6xl font-black text-slate-700 whitespace-nowrap">
-                      {currentLyric.text}
-                    </span>
-                    <div 
-                      className="absolute top-0 left-0 overflow-hidden transition-all duration-100 ease-linear whitespace-nowrap"
-                      style={{ width: `${getHighlightWidth()}%` }}
-                    >
-                      <span className="text-5xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-r from-yellow-400 via-orange-500 to-yellow-400 drop-shadow-[0_0_15px_rgba(250,204,21,0.6)]">
-                        {currentLyric.text}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  {/* Subtitle/Romanization */}
-                  <p className="text-lg md:text-xl text-slate-400 font-medium italic mb-8">
-                    {currentLyric.sub}
-                  </p>
+        .lyric-bg {
+            color: #334155; /* slate-700 */
+        }
 
-                  {/* Next Lyric Preview */}
-                  {nextLyric && (
-                    <div className="mt-8 flex items-center justify-center gap-2 text-slate-500 animate-pulse">
-                      <span className="text-sm font-bold uppercase tracking-widest">Next:</span>
-                      <span className="text-lg">{nextLyric.text}</span>
-                      <ChevronRight size={16} />
-                    </div>
-                  )}
-                </>
-              ) : (
-                <div className="text-slate-500 flex flex-col items-center gap-4">
-                  <Mic2 size={64} className="opacity-20 mb-2" />
-                  <p className="text-2xl font-light italic">준비되셨나요? 시작 버튼을 눌러주세요!</p>
-                  <p className="text-sm opacity-50">Are you ready? Press Start to sing!</p>
+        .lyric-fg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 0%;
+            overflow: hidden;
+            white-space: nowrap;
+            color: transparent;
+            background: linear-gradient(to right, #facc15, #f97316, #facc15);
+            -webkit-background-clip: text;
+            background-clip: text;
+            filter: drop-shadow(0 0 15px rgba(250, 204, 21, 0.6));
+            transition: width 100ms linear;
+        }
+
+        .score-animation {
+            animation: zoomIn 0.5s ease-out forwards;
+        }
+
+        @keyframes zoomIn {
+            from { opacity: 0; transform: scale(0.9); }
+            to { opacity: 1; transform: scale(1); }
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-slate-950 text-white flex flex-col items-center justify-center p-4">
+
+    <!-- Karaoke Screen Container -->
+    <div class="w-full max-w-4xl bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border-4 border-indigo-500/30 relative">
+        
+        <!-- Header/Status Bar -->
+        <div class="bg-slate-800/80 p-4 flex justify-between items-center border-b border-indigo-500/20">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center animate-pulse">
+                    <i data-lucide="music" size="20"></i>
                 </div>
-              )}
+                <div>
+                    <h1 class="text-xl font-bold text-indigo-400">아리랑 (Arirang)</h1>
+                    <p class="text-xs text-slate-400">Traditional Korean Folk Song</p>
+                </div>
             </div>
-          ) : (
-            /* Final Score Display */
-            <div className="text-center z-20 animate-in zoom-in duration-500">
-              <Trophy size={80} className="mx-auto text-yellow-400 mb-4 drop-shadow-[0_0_20px_rgba(250,204,21,0.4)]" />
-              <h2 className="text-3xl font-bold text-white mb-2">수고하셨습니다!</h2>
-              <div className="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 to-yellow-600 mb-4">
-                {score}
-              </div>
-              <p className="text-xl text-indigo-300">오늘의 아리랑 가수 탄생!</p>
-              <button 
-                onClick={handleReset}
-                className="mt-8 px-8 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-full font-bold flex items-center gap-2 mx-auto transition-all"
-              >
-                <RotateCcw size={20} /> 다시 부르기
-              </button>
+            <div class="text-right">
+                <div id="timer-display" class="text-2xl font-mono font-bold text-yellow-400">0:00</div>
+                <div class="text-[10px] uppercase tracking-widest text-slate-500">Duration</div>
             </div>
-          )}
         </div>
 
-        {/* Progress Bar */}
-        <div className="h-2 bg-slate-800 w-full relative">
-          <div 
-            className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_10px_rgba(99,102,241,0.8)] transition-all duration-100 ease-linear"
-            style={{ width: `${(currentTime / totalDuration) * 100}%` }}
-          />
-        </div>
-
-        {/* Control Panel */}
-        <div className="bg-slate-800 p-6 flex items-center justify-between">
-          <div className="flex gap-4">
-            <button 
-              onClick={handleTogglePlay}
-              className={`w-16 h-16 rounded-full flex items-center justify-center transition-all ${
-                isPlaying 
-                ? "bg-red-500 hover:bg-red-600 shadow-[0_0_20px_rgba(239,68,68,0.4)]" 
-                : "bg-green-500 hover:bg-green-600 shadow-[0_0_20px_rgba(34,197,94,0.4)]"
-              }`}
-            >
-              {isPlaying ? <Pause size={32} fill="white" /> : <Play size={32} fill="white" className="ml-1" />}
-            </button>
-            <button 
-              onClick={handleReset}
-              className="w-16 h-16 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center transition-all"
-            >
-              <RotateCcw size={28} />
-            </button>
-          </div>
-
-          <div className="hidden md:flex flex-col items-end gap-1">
-            <div className="flex gap-2">
-              <span className="px-3 py-1 bg-indigo-500/20 text-indigo-400 rounded-md text-xs font-bold border border-indigo-500/30">
-                TEMPO 100%
-              </span>
-              <span className="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-md text-xs font-bold border border-purple-500/30">
-                KEY +0
-              </span>
+        <!-- Lyrics Area -->
+        <div id="lyrics-area" class="h-80 flex flex-col items-center justify-center p-8 relative overflow-hidden bg-gradient-to-b from-slate-900 to-indigo-950/20">
+            <!-- Background Decorative Elements -->
+            <div class="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none">
+                <div class="absolute top-10 left-10 w-32 h-32 bg-indigo-500 rounded-full blur-3xl"></div>
+                <div class="absolute bottom-10 right-10 w-40 h-40 bg-purple-500 rounded-full blur-3xl"></div>
             </div>
-            <p className="text-[10px] text-slate-500 font-mono tracking-tighter mt-1">
-              PRODUCED BY GEMINI KARAOKE SYSTEM v1.0
-            </p>
-          </div>
-        </div>
-      </div>
 
-      {/* Instructions */}
-      <div className="mt-8 text-slate-500 text-sm max-w-md text-center">
-        <p>키보드와 마우스로 노래방 기기를 조작할 수 있습니다.</p>
-        <p className="mt-1 opacity-70 italic">"나를 버리고 가시는 님은 십리도 못가서 발병난다..."</p>
-      </div>
+            <!-- Ready Screen -->
+            <div id="ready-screen" class="text-slate-500 flex flex-col items-center gap-4 z-10">
+                <i data-lucide="mic-2" size="64" class="opacity-20 mb-2"></i>
+                <p class="text-2xl font-light italic text-center">준비되셨나요? 시작 버튼을 눌러주세요!</p>
+                <p class="text-sm opacity-50">Are you ready? Press Start to sing!</p>
+            </div>
+
+            <!-- Singing Screen (Hidden by default) -->
+            <div id="singing-screen" class="hidden text-center z-10 transition-all duration-300">
+                <div class="lyric-highlight-container mb-4">
+                    <span id="lyric-text-bg" class="text-5xl md:text-6xl font-black lyric-bg whitespace-nowrap">아리랑 아리랑 아라리요</span>
+                    <div id="lyric-text-fg-container" class="lyric-fg whitespace-nowrap">
+                        <span id="lyric-text-fg" class="text-5xl md:text-6xl font-black">아리랑 아리랑 아라리요</span>
+                    </div>
+                </div>
+                <p id="lyric-sub" class="text-lg md:text-xl text-slate-400 font-medium italic mb-8">Arirang, Arirang, Arariyo</p>
+                
+                <div id="next-lyric-preview" class="mt-8 flex items-center justify-center gap-2 text-slate-500 animate-pulse">
+                    <span class="text-sm font-bold uppercase tracking-widest">Next:</span>
+                    <span id="next-lyric-text" class="text-lg">가사 정보</span>
+                    <i data-lucide="chevron-right" size="16"></i>
+                </div>
+            </div>
+
+            <!-- Score Screen (Hidden by default) -->
+            <div id="score-screen" class="hidden text-center z-20 score-animation">
+                <i data-lucide="trophy" size="80" class="mx-auto text-yellow-400 mb-4 drop-shadow-[0_0_20px_rgba(250,204,21,0.4)]"></i>
+                <h2 class="text-3xl font-bold text-white mb-2">수고하셨습니다!</h2>
+                <div id="final-score" class="text-8xl font-black text-transparent bg-clip-text bg-gradient-to-b from-yellow-200 to-yellow-600 mb-4">
+                    95
+                </div>
+                <p class="text-xl text-indigo-300">오늘의 아리랑 가수 탄생!</p>
+                <button onclick="resetApp()" class="mt-8 px-8 py-3 bg-indigo-600 hover:bg-indigo-500 rounded-full font-bold flex items-center gap-2 mx-auto transition-all">
+                    <i data-lucide="rotate-ccw" size="20"></i> 다시 부르기
+                </button>
+            </div>
+        </div>
+
+        <!-- Progress Bar -->
+        <div class="h-2 bg-slate-800 w-full relative">
+            <div id="progress-bar" class="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 shadow-[0_0_10px_rgba(99,102,241,0.8)] transition-all duration-100 ease-linear" style="width: 0%"></div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="bg-slate-800 p-6 flex items-center justify-between">
+            <div class="flex gap-4">
+                <button id="play-pause-btn" onclick="togglePlay()" class="w-16 h-16 rounded-full flex items-center justify-center transition-all bg-green-500 hover:bg-green-600 shadow-[0_0_20px_rgba(34,197,94,0.4)]">
+                    <i id="play-icon" data-lucide="play" size="32" fill="white" class="ml-1"></i>
+                    <i id="pause-icon" data-lucide="pause" size="32" fill="white" class="hidden"></i>
+                </button>
+                <button onclick="resetApp()" class="w-16 h-16 rounded-full bg-slate-700 hover:bg-slate-600 flex items-center justify-center transition-all">
+                    <i data-lucide="rotate-ccw" size="28"></i>
+                </button>
+            </div>
+
+            <div class="hidden md:flex flex-col items-end gap-1">
+                <div class="flex gap-2">
+                    <span class="px-3 py-1 bg-indigo-500/20 text-indigo-400 rounded-md text-xs font-bold border border-indigo-500/30">
+                        TEMPO 100%
+                    </span>
+                    <span class="px-3 py-1 bg-purple-500/20 text-purple-400 rounded-md text-xs font-bold border border-purple-500/30">
+                        KEY +0
+                    </span>
+                </div>
+                <p class="text-[10px] text-slate-500 font-mono tracking-tighter mt-1">
+                    PRODUCED BY GEMINI KARAOKE SYSTEM v1.0
+                </p>
+            </div>
+        </div>
     </div>
-  );
-};
 
-export default App;
+    <!-- Instructions -->
+    <div class="mt-8 text-slate-500 text-sm max-w-md text-center">
+        <p>키보드와 마우스로 노래방 기기를 조작할 수 있습니다.</p>
+        <p class="mt-1 opacity-70 italic">"나를 버리고 가시는 님은 십리도 못가서 발병난다..."</p>
+    </div>
+
+    <script>
+        // Constants
+        const ARIRANG_LYRICS = [
+            { start: 0, end: 4, text: "아리랑 아리랑 아라리요", sub: "Arirang, Arirang, Arariyo" },
+            { start: 4, end: 8, text: "아리랑 고개로 넘어간다", sub: "Crossing over the Arirang Pass" },
+            { start: 8, end: 12, text: "나를 버리고 가시는 님은", sub: "Dear one who leaves me behind" },
+            { start: 12, end: 16, text: "십리도 못가서 발병난다", sub: "Will have sore feet before going ten li" },
+            { start: 16, end: 20, text: "아리랑 아리랑 아라리요", sub: "Arirang, Arirang, Arariyo" },
+            { start: 20, end: 24, text: "아리랑 고개로 넘어간다", sub: "Crossing over the Arirang Pass" }
+        ];
+
+        // State Variables
+        let isPlaying = false;
+        let currentTime = 0;
+        let timer = null;
+        let showScore = false;
+        const totalDuration = ARIRANG_LYRICS[ARIRANG_LYRICS.length - 1].end;
+
+        // Elements
+        const timerDisplay = document.getElementById('timer-display');
+        const progressBar = document.getElementById('progress-bar');
+        const readyScreen = document.getElementById('ready-screen');
+        const singingScreen = document.getElementById('singing-screen');
+        const scoreScreen = document.getElementById('score-screen');
+        const lyricTextBg = document.getElementById('lyric-text-bg');
+        const lyricTextFg = document.getElementById('lyric-text-fg');
+        const lyricTextFgContainer = document.getElementById('lyric-text-fg-container');
+        const lyricSub = document.getElementById('lyric-sub');
+        const nextLyricPreview = document.getElementById('next-lyric-preview');
+        const nextLyricText = document.getElementById('next-lyric-text');
+        const finalScore = document.getElementById('final-score');
+        const playPauseBtn = document.getElementById('play-pause-btn');
+        const playIcon = document.getElementById('play-icon');
+        const pauseIcon = document.getElementById('pause-icon');
+
+        // Initialize Icons
+        lucide.createIcons();
+
+        function togglePlay() {
+            if (showScore) {
+                resetApp();
+                return;
+            }
+            
+            isPlaying = !isPlaying;
+            if (isPlaying) {
+                startTimer();
+                updatePlayButton(true);
+            } else {
+                stopTimer();
+                updatePlayButton(false);
+            }
+        }
+
+        function startTimer() {
+            timer = setInterval(() => {
+                currentTime += 0.1;
+                if (currentTime >= totalDuration) {
+                    currentTime = totalDuration;
+                    finishSong();
+                }
+                updateUI();
+            }, 100);
+        }
+
+        function stopTimer() {
+            clearInterval(timer);
+        }
+
+        function resetApp() {
+            stopTimer();
+            isPlaying = false;
+            currentTime = 0;
+            showScore = false;
+            
+            updatePlayButton(false);
+            readyScreen.classList.remove('hidden');
+            singingScreen.classList.add('hidden');
+            scoreScreen.classList.add('hidden');
+            updateUI();
+        }
+
+        function finishSong() {
+            stopTimer();
+            isPlaying = false;
+            showScore = true;
+            
+            const randomScore = Math.floor(Math.random() * 21) + 80;
+            finalScore.innerText = randomScore;
+            
+            readyScreen.classList.add('hidden');
+            singingScreen.classList.add('hidden');
+            scoreScreen.classList.remove('hidden');
+            updatePlayButton(false);
+        }
+
+        function updatePlayButton(playing) {
+            if (playing) {
+                playPauseBtn.classList.replace('bg-green-500', 'bg-red-500');
+                playPauseBtn.classList.replace('hover:bg-green-600', 'hover:bg-red-600');
+                playIcon.classList.add('hidden');
+                pauseIcon.classList.remove('hidden');
+            } else {
+                playPauseBtn.classList.replace('bg-red-500', 'bg-green-500');
+                playPauseBtn.classList.replace('hover:bg-red-600', 'hover:bg-green-600');
+                playIcon.classList.remove('hidden');
+                pauseIcon.classList.add('hidden');
+            }
+        }
+
+        function updateUI() {
+            // Update Timer
+            const minutes = Math.floor(currentTime / 60);
+            const seconds = Math.floor(currentTime % 60).toString().padStart(2, '0');
+            timerDisplay.innerText = `${minutes}:${seconds}`;
+
+            // Update Progress Bar
+            const progressPercent = (currentTime / totalDuration) * 100;
+            progressBar.style.width = `${progressPercent}%`;
+
+            // Update Lyrics
+            if (!showScore && currentTime > 0) {
+                readyScreen.classList.add('hidden');
+                singingScreen.classList.remove('hidden');
+
+                const currentLyricIndex = ARIRANG_LYRICS.findIndex(
+                    l => currentTime >= l.start && currentTime < l.end
+                );
+
+                if (currentLyricIndex !== -1) {
+                    const lyric = ARIRANG_LYRICS[currentLyricIndex];
+                    lyricTextBg.innerText = lyric.text;
+                    lyricTextFg.innerText = lyric.text;
+                    lyricSub.innerText = lyric.sub;
+
+                    // Calculate highlight width
+                    const duration = lyric.end - lyric.start;
+                    const elapsed = currentTime - lyric.start;
+                    const highlightWidth = Math.min((elapsed / duration) * 100, 100);
+                    lyricTextFgContainer.style.width = `${highlightWidth}%`;
+
+                    // Next lyric preview
+                    const nextLyric = ARIRANG_LYRICS[currentLyricIndex + 1];
+                    if (nextLyric) {
+                        nextLyricPreview.classList.remove('hidden');
+                        nextLyricText.innerText = nextLyric.text;
+                    } else {
+                        nextLyricPreview.classList.add('hidden');
+                    }
+                }
+            } else if (currentTime === 0) {
+                readyScreen.classList.remove('hidden');
+                singingScreen.classList.add('hidden');
+            }
+        }
+    </script>
+</body>
+</html>
